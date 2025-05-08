@@ -20,29 +20,56 @@ const BASE_URL = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : 'https://farcasterframe-beta.vercel.app';
 
-// Simple frame route (GET for browser testing, POST for Farcaster)
-app.get('/frame', async (req, res) => {
-    const html = `
+// Store user links temporarily
+let userLinks = {};
+
+// Helper function to generate HTML with Open Graph meta tags for Farcaster Frames
+const generateFrameHTML = (image, buttons, postUrl = null, input = null) => {
+    let buttonMetaTags = '';
+    buttons.forEach((button, index) => {
+        const buttonIndex = index + 1;
+        buttonMetaTags += `
+            <meta name="fc:frame:button:${buttonIndex}" content="${button.label}" />
+            <meta name="fc:frame:button:${buttonIndex}:action" content="${button.action}" />
+            ${button.target ? `<meta name="fc:frame:button:${buttonIndex}:target" content="${button.target}" />` : ''}
+        `;
+    });
+
+    const inputMetaTag = input ? `<meta name="fc:frame:input:text" content="${input}" />` : '';
+    const postUrlMetaTag = postUrl ? `<meta name="fc:frame:post_url" content="${postUrl}" />` : '';
+
+    return `
         <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta property="og:title" content="Simple Farcaster Frame" />
-            <meta property="og:image" content="https://i.imgur.com/RRvSVe4.png" />
+            <meta property="og:title" content="Farcaster Frame" />
+            <meta property="og:image" content="${image}" />
             <meta name="fc:frame" content="vNext" />
-            <meta name="fc:frame:image" content="https://i.imgur.com/RRvSVe4.png" />
-            <meta name="fc:frame:button:1" content="Say Hello" />
-            <meta name="fc:frame:button:1:action" content="post" />
-            <meta name="fc:frame:button:1:target" content="${BASE_URL}/hello" />
-            <meta name="fc:frame:post_url" content="${BASE_URL}/frame" />
+            <meta name="fc:frame:image" content="${image}" />
+            ${inputMetaTag}
+            ${buttonMetaTags}
+            ${postUrlMetaTag}
         </head>
         <body>
-            <h1>Simple Farcaster Frame</h1>
-            <img src="https://i.imgur.com/RRvSVe4.png" alt="Frame Image" />
+            <h1>Farcaster Frame</h1>
+            <img src="${image}" alt="Frame Image" />
         </body>
         </html>
     `;
+};
+
+// Initial frame (GET for browser testing, POST for Farcaster)
+app.get('/frame', async (req, res) => {
+    const html = generateFrameHTML(
+        'https://files.catbox.moe/rz21ds.png', // purple-frame.png
+        [
+            { label: 'Mint NFT', action: 'post', target: `${BASE_URL}/mint` },
+            { label: 'Add Your Link', action: 'post', target: `${BASE_URL}/add-link` },
+        ],
+        `${BASE_URL}/frame`
+    );
     res.set({
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-cache',
@@ -51,27 +78,14 @@ app.get('/frame', async (req, res) => {
 });
 
 app.post('/frame', async (req, res) => {
-    const html = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta property="og:title" content="Simple Farcaster Frame" />
-            <meta property="og:image" content="https://i.imgur.com/RRvSVe4.png" />
-            <meta name="fc:frame" content="vNext" />
-            <meta name="fc:frame:image" content="https://i.imgur.com/RRvSVe4.png" />
-            <meta name="fc:frame:button:1" content="Say Hello" />
-            <meta name="fc:frame:button:1:action" content="post" />
-            <meta name="fc:frame:button:1:target" content="${BASE_URL}/hello" />
-            <meta name="fc:frame:post_url" content="${BASE_URL}/frame" />
-        </head>
-        <body>
-            <h1>Simple Farcaster Frame</h1>
-            <img src="https://i.imgur.com/RRvSVe4.png" alt="Frame Image" />
-        </body>
-        </html>
-    `;
+    const html = generateFrameHTML(
+        'https://files.catbox.moe/rz21ds.png', // purple-frame.png
+        [
+            { label: 'Mint NFT', action: 'post', target: `${BASE_URL}/mint` },
+            { label: 'Add Your Link', action: 'post', target: `${BASE_URL}/add-link` },
+        ],
+        `${BASE_URL}/frame`
+    );
     res.set({
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-cache',
@@ -79,28 +93,71 @@ app.post('/frame', async (req, res) => {
     res.send(html);
 });
 
-// Hello route (response after clicking the button)
-app.post('/hello', async (req, res) => {
-    const html = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta property="og:title" content="Hello from Farcaster Frame" />
-            <meta property="og:image" content="https://i.imgur.com/x8I9JD7.png" />
-            <meta name="fc:frame" content="vNext" />
-            <meta name="fc:frame:image" content="https://i.imgur.com/x8I9JD7.png" />
-            <meta name="fc:frame:button:1" content="Back" />
-            <meta name="fc:frame:button:1:action" content="post" />
-            <meta name="fc:frame:button:1:target" content="${BASE_URL}/frame" />
-        </head>
-        <body>
-            <h1>Hello from Farcaster Frame</h1>
-            <img src="https://i.imgur.com/x8I9JD7.png" alt="Hello Image" />
-        </body>
-        </html>
-    `;
+// Mint action
+app.post('/mint', async (req, res) => {
+    const userId = req.body.untrustedData?.fid || 'unknown';
+    const userLink = userLinks[userId] || 'https://default-mint-url.com';
+
+    const html = generateFrameHTML(
+        'https://files.catbox.moe/qiynxa.png', // connect-wallet.png
+        [
+            { label: 'Connect Wallet', action: 'link', target: userLink },
+            { label: 'Back', action: 'post', target: `${BASE_URL}/frame` },
+        ]
+    );
+    res.set({
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache',
+    });
+    res.send(html);
+});
+
+// Add Your Link action
+app.post('/add-link', async (req, res) => {
+    const html = generateFrameHTML(
+        'https://files.catbox.moe/qybjkv.png', // add-link.png
+        [
+            { label: 'Submit Link', action: 'post', target: `${BASE_URL}/submit-link` },
+            { label: 'Back', action: 'post', target: `${BASE_URL}/frame` },
+        ],
+        null,
+        'Enter your Magic Eden or mint link'
+    );
+    res.set({
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache',
+    });
+    res.send(html);
+});
+
+// Submit link and create new frame
+app.post('/submit-link', async (req, res) => {
+    const userId = req.body.untrustedData?.fid || 'unknown';
+    const submittedLink = req.body.untrustedData?.inputText || 'https://default-mint-url.com';
+    userLinks[userId] = submittedLink;
+
+    const html = generateFrameHTML(
+        'https://files.catbox.moe/03j2k5.png', // new-frame.png
+        [
+            { label: 'Cast Frame', action: 'post', target: `${BASE_URL}/cast` },
+            { label: 'Tweet Link', action: 'link', target: `https://x.com/intent/tweet?text=Check%20out%20my%20NFT!%20${encodeURIComponent(submittedLink)}` },
+        ]
+    );
+    res.set({
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache',
+    });
+    res.send(html);
+});
+
+// Cast frame
+app.post('/cast', async (req, res) => {
+    const html = generateFrameHTML(
+        'https://files.catbox.moe/yy1ata.png', // success.png
+        [
+            { label: 'Back to Start', action: 'post', target: `${BASE_URL}/frame` },
+        ]
+    );
     res.set({
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-cache',
