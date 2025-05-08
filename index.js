@@ -23,8 +23,16 @@ const BASE_URL = process.env.VERCEL_URL
 // Store user links temporarily
 let userLinks = {};
 
+// Default Magic Eden mint link
+const DEFAULT_MINT_LINK = 'https://magiceden.io/mint-terminal/monad-testnet/0x164d3bfe2d65b269174f36889b7159c88b64eeec';
+
+// Helper function to validate Magic Eden link
+const isValidMagicEdenLink = (link) => {
+    return link && link.startsWith('https://magiceden.io');
+};
+
 // Helper function to generate HTML with Open Graph meta tags for Farcaster Frames
-const generateFrameHTML = (image, buttons, postUrl = null, input = null) => {
+const generateFrameHTML = (image, buttons, postUrl = null, input = null, message = null) => {
     let buttonMetaTags = '';
     buttons.forEach((button, index) => {
         const buttonIndex = index + 1;
@@ -55,6 +63,7 @@ const generateFrameHTML = (image, buttons, postUrl = null, input = null) => {
         <body>
             <h1>Farcaster Frame</h1>
             <img src="${image}" alt="Frame Image" />
+            ${message ? `<p>${message}</p>` : ''}
         </body>
         </html>
     `;
@@ -96,14 +105,17 @@ app.post('/frame', async (req, res) => {
 // Mint action
 app.post('/mint', async (req, res) => {
     const userId = req.body.untrustedData?.fid || 'unknown';
-    const userLink = userLinks[userId] || 'https://default-mint-url.com';
+    const userLink = userLinks[userId] || DEFAULT_MINT_LINK;
 
     const html = generateFrameHTML(
         'https://files.catbox.moe/qiynxa.png', // connect-wallet.png
         [
             { label: 'Connect Wallet', action: 'link', target: userLink },
             { label: 'Back', action: 'post', target: `${BASE_URL}/frame` },
-        ]
+        ],
+        `${BASE_URL}/frame`,
+        null,
+        `Minting at: ${userLink}`
     );
     res.set({
         'Content-Type': 'text/html; charset=utf-8',
@@ -120,7 +132,7 @@ app.post('/add-link', async (req, res) => {
             { label: 'Submit Link', action: 'post', target: `${BASE_URL}/submit-link` },
             { label: 'Back', action: 'post', target: `${BASE_URL}/frame` },
         ],
-        null,
+        `${BASE_URL}/add-link`,
         'Enter your Magic Eden or mint link'
     );
     res.set({
@@ -133,7 +145,28 @@ app.post('/add-link', async (req, res) => {
 // Submit link and create new frame
 app.post('/submit-link', async (req, res) => {
     const userId = req.body.untrustedData?.fid || 'unknown';
-    const submittedLink = req.body.untrustedData?.inputText || 'https://default-mint-url.com';
+    const submittedLink = req.body.untrustedData?.inputText || DEFAULT_MINT_LINK;
+
+    // Validate the submitted link
+    if (!isValidMagicEdenLink(submittedLink)) {
+        const html = generateFrameHTML(
+            'https://files.catbox.moe/qybjkv.png', // add-link.png
+            [
+                { label: 'Try Again', action: 'post', target: `${BASE_URL}/add-link` },
+                { label: 'Back', action: 'post', target: `${BASE_URL}/frame` },
+            ],
+            `${BASE_URL}/add-link`,
+            null,
+            'Invalid link! Please enter a valid Magic Eden link.'
+        );
+        res.set({
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-cache',
+        });
+        res.send(html);
+        return;
+    }
+
     userLinks[userId] = submittedLink;
 
     const html = generateFrameHTML(
@@ -141,7 +174,10 @@ app.post('/submit-link', async (req, res) => {
         [
             { label: 'Cast Frame', action: 'post', target: `${BASE_URL}/cast` },
             { label: 'Tweet Link', action: 'link', target: `https://x.com/intent/tweet?text=Check%20out%20my%20NFT!%20${encodeURIComponent(submittedLink)}` },
-        ]
+        ],
+        `${BASE_URL}/submit-link`,
+        null,
+        `Your NFT link: ${submittedLink}`
     );
     res.set({
         'Content-Type': 'text/html; charset=utf-8',
@@ -152,11 +188,17 @@ app.post('/submit-link', async (req, res) => {
 
 // Cast frame
 app.post('/cast', async (req, res) => {
+    const userId = req.body.untrustedData?.fid || 'unknown';
+    const userLink = userLinks[userId] || DEFAULT_MINT_LINK;
+
     const html = generateFrameHTML(
         'https://files.catbox.moe/yy1ata.png', // success.png
         [
             { label: 'Back to Start', action: 'post', target: `${BASE_URL}/frame` },
-        ]
+        ],
+        `${BASE_URL}/cast`,
+        null,
+        `Successfully casted! Your NFT link: ${userLink}`
     );
     res.set({
         'Content-Type': 'text/html; charset=utf-8',
