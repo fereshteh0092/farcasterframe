@@ -37,8 +37,8 @@ const generateFrameHTML = (image, buttons, postUrl = null, input = null, message
     buttons.forEach((button, index) => {
         const buttonIndex = index + 1;
         buttonMetaTags += `
-            <meta name="fc:frame:button:${buttonIndex}" content="${button.label}" />
-            <meta name="fc:frame:button:${buttonIndex}:action" content="${button.action}" />
+            <meta name="fc:frame:button:${buttonIndex}" content="${button.label}"/>
+            <meta name="fc:frame:button:${buttonIndex}:action" content="${button.action}"/>
             ${button.target ? `<meta name="fc:frame:button:${buttonIndex}:target" content="${button.target}" />` : ''}
         `;
     });
@@ -72,12 +72,14 @@ const generateFrameHTML = (image, buttons, postUrl = null, input = null, message
 // Initial frame (GET for browser testing, POST for Farcaster)
 app.get('/frame', async (req, res) => {
     const html = generateFrameHTML(
-        'https://files.catbox.moe/rz21ds.png', // purple-frame.png
+        'https://files.catbox.moe/rz21ds.png', // purple-frame.png (replace with NFT art if available)
         [
             { label: 'Mint NFT', action: 'post', target: `${BASE_URL}/mint` },
             { label: 'Add Your Link', action: 'post', target: `${BASE_URL}/add-link` },
         ],
-        `${BASE_URL}/frame`
+        `${BASE_URL}/frame`,
+        null,
+        `NFT Link: ${DEFAULT_MINT_LINK}`
     );
     res.set({
         'Content-Type': 'text/html; charset=utf-8',
@@ -88,12 +90,14 @@ app.get('/frame', async (req, res) => {
 
 app.post('/frame', async (req, res) => {
     const html = generateFrameHTML(
-        'https://files.catbox.moe/rz21ds.png', // purple-frame.png
+        'https://files.catbox.moe/rz21ds.png', // purple-frame.png (replace with NFT art if available)
         [
             { label: 'Mint NFT', action: 'post', target: `${BASE_URL}/mint` },
             { label: 'Add Your Link', action: 'post', target: `${BASE_URL}/add-link` },
         ],
-        `${BASE_URL}/frame`
+        `${BASE_URL}/frame`,
+        null,
+        `NFT Link: ${DEFAULT_MINT_LINK}`
     );
     res.set({
         'Content-Type': 'text/html; charset=utf-8',
@@ -170,14 +174,14 @@ app.post('/submit-link', async (req, res) => {
     userLinks[userId] = submittedLink;
 
     const html = generateFrameHTML(
-        'https://files.catbox.moe/03j2k5.png', // new-frame.png
+        'https://files.catbox.moe/03j2k5.png', // new-frame.png (replace with user NFT art if available)
         [
             { label: 'Cast Frame', action: 'post', target: `${BASE_URL}/cast` },
             { label: 'Tweet Link', action: 'link', target: `https://x.com/intent/tweet?text=Check%20out%20my%20NFT!%20${encodeURIComponent(submittedLink)}` },
         ],
         `${BASE_URL}/submit-link`,
         null,
-        `Your NFT link: ${submittedLink}`
+        `Your NFT Link: ${submittedLink}`
     );
     res.set({
         'Content-Type': 'text/html; charset=utf-8',
@@ -198,7 +202,7 @@ app.post('/cast', async (req, res) => {
         ],
         `${BASE_URL}/cast`,
         null,
-        `Successfully casted! Your NFT link: ${userLink}`
+        `Successfully casted! Your NFT Link: ${userLink}`
     );
     res.set({
         'Content-Type': 'text/html; charset=utf-8',
