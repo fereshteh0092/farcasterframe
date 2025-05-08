@@ -6,124 +6,111 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Enable CORS for Farcaster clients
 app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST'],
+    origin: '*',
+    methods: ['GET', 'POST'],
 }));
 
-app.use(express.json({ type: '*/*' }));
+app.use(express.json());
 
 let userLinks = {};
 const BASE_URL = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : 'https://farcasterframe-beta.vercel.app'; // Replace with your deployed URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'https://farcasterframe-beta.vercel.app'; // Use your Vercel URL
 
-const renderFrame = (metaTags) => `
-  <html>
-    <head>
-      ${metaTags.join('\n')}
-    </head>
-    <body></body>
-  </html>
-`;
-
-// GET /frame
-app.get('/frame', (req, res) => {
-  res.set('Content-Type', 'text/html');
-  res.send(renderFrame([
-    `<meta property="fc:frame" content="vNext" />`,
-    `<meta property="fc:frame:image" content="https://i.imgur.com/RRvSVe4.png" />`,
-    `<meta property="fc:frame:button:1" content="Mint NFT" />`,
-    `<meta property="fc:frame:button:1:action" content="post" />`,
-    `<meta property="fc:frame:button:1:target" content="${BASE_URL}/mint" />`,
-    `<meta property="fc:frame:button:2" content="Add Your Link" />`,
-    `<meta property="fc:frame:button:2:action" content="post" />`,
-    `<meta property="fc:frame:button:2:target" content="${BASE_URL}/add-link" />`,
-    `<meta property="fc:frame:post_url" content="${BASE_URL}/frame" />`
-  ]));
+// Add GET route for testing in browser
+app.get('/frame', async (req, res) => {
+    const frame = {
+        "fc:frame": "vNext",
+        "fc:frame:image": "https://i.imgur.com/RRvSVe4.png",
+        "fc:frame:button:1": "Mint NFT",
+        "fc:frame:button:1:action": "post",
+        "fc:frame:button:1:target": `${BASE_URL}/mint`,
+        "fc:frame:button:2": "Add Your Link",
+        "fc:frame:button:2:action": "post",
+        "fc:frame:button:2:target": `${BASE_URL}/add-link`,
+        "fc:frame:post_url": `${BASE_URL}/frame`,
+    };
+    res.json(frame);
 });
 
-// POST /frame (same view to keep the UI consistent)
-app.post('/frame', (req, res) => {
-  res.set('Content-Type', 'text/html');
-  res.send(renderFrame([
-    `<meta property="fc:frame" content="vNext" />`,
-    `<meta property="fc:frame:image" content="https://i.imgur.com/RRvSVe4.png" />`,
-    `<meta property="fc:frame:button:1" content="Mint NFT" />`,
-    `<meta property="fc:frame:button:1:action" content="post" />`,
-    `<meta property="fc:frame:button:1:target" content="${BASE_URL}/mint" />`,
-    `<meta property="fc:frame:button:2" content="Add Your Link" />`,
-    `<meta property="fc:frame:button:2:action" content="post" />`,
-    `<meta property="fc:frame:button:2:target" content="${BASE_URL}/add-link" />`,
-    `<meta property="fc:frame:post_url" content="${BASE_URL}/frame" />`
-  ]));
+app.post('/frame', async (req, res) => {
+    const frame = {
+        "fc:frame": "vNext",
+        "fc:frame:image": "https://i.imgur.com/RRvSVe4.png",
+        "fc:frame:button:1": "Mint NFT",
+        "fc:frame:button:1:action": "post",
+        "fc:frame:button:1:target": `${BASE_URL}/mint`,
+        "fc:frame:button:2": "Add Your Link",
+        "fc:frame:button:2:action": "post",
+        "fc:frame:button:2:target": `${BASE_URL}/add-link`,
+        "fc:frame:post_url": `${BASE_URL}/frame`,
+    };
+    res.json(frame);
 });
 
-// POST /mint
-app.post('/mint', (req, res) => {
-  const userId = req.body.untrustedData?.fid || 'unknown';
-  const userLink = userLinks[userId] || 'https://default-mint-url.com';
+app.post('/mint', async (req, res) => {
+    const userId = req.body.untrustedData?.fid || 'unknown';
+    const userLink = userLinks[userId] || 'https://default-mint-url.com';
 
-  res.set('Content-Type', 'text/html');
-  res.send(renderFrame([
-    `<meta property="fc:frame" content="vNext" />`,
-    `<meta property="fc:frame:image" content="https://i.imgur.com/x8I9JD7.png" />`,
-    `<meta property="fc:frame:button:1" content="Connect Wallet" />`,
-    `<meta property="fc:frame:button:1:action" content="link" />`,
-    `<meta property="fc:frame:button:1:target" content="${userLink}" />`,
-    `<meta property="fc:frame:button:2" content="Back" />`,
-    `<meta property="fc:frame:button:2:action" content="post" />`,
-    `<meta property="fc:frame:button:2:target" content="${BASE_URL}/frame" />`
-  ]));
+    const frame = {
+        "fc:frame": "vNext",
+        "fc:frame:image": "https://i.imgur.com/x8I9JD7.png",
+        "fc:frame:button:1": "Connect Wallet",
+        "fc:frame:button:1:action": "link",
+        "fc:frame:button:1:target": userLink,
+        "fc:frame:button:2": "Back",
+        "fc:frame:button:2:action": "post",
+        "fc:frame:button:2:target": `${BASE_URL}/frame`,
+    };
+    res.json(frame);
 });
 
-// POST /add-link
-app.post('/add-link', (req, res) => {
-  res.set('Content-Type', 'text/html');
-  res.send(renderFrame([
-    `<meta property="fc:frame" content="vNext" />`,
-    `<meta property="fc:frame:image" content="https://i.imgur.com/zabL7UK.png" />`,
-    `<meta property="fc:frame:input:text" content="Enter your Magic Eden or mint link" />`,
-    `<meta property="fc:frame:button:1" content="Submit Link" />`,
-    `<meta property="fc:frame:button:1:action" content="post" />`,
-    `<meta property="fc:frame:button:1:target" content="${BASE_URL}/submit-link" />`,
-    `<meta property="fc:frame:button:2" content="Back" />`,
-    `<meta property="fc:frame:button:2:action" content="post" />`,
-    `<meta property="fc:frame:button:2:target" content="${BASE_URL}/frame" />`
-  ]));
+app.post('/add-link', async (req, res) => {
+    const frame = {
+        "fc:frame": "vNext",
+        "fc:frame:image": "https://i.imgur.com/zabL7UK.png",
+        "fc:frame:input:text": "Enter your Magic Eden or mint link",
+        "fc:frame:button:1": "Submit Link",
+        "fc:frame:button:1:action": "post",
+        "fc:frame:button:1:target": `${BASE_URL}/submit-link`,
+        "fc:frame:button:2": "Back",
+        "fc:frame:button:2:action": "post",
+        "fc:frame:button:2:target": `${BASE_URL}/frame`,
+    };
+    res.json(frame);
 });
 
-// POST /submit-link
-app.post('/submit-link', (req, res) => {
-  const userId = req.body.untrustedData?.fid || 'unknown';
-  const submittedLink = req.body.untrustedData?.inputText || 'https://default-mint-url.com';
-  userLinks[userId] = submittedLink;
+app.post('/submit-link', async (req, res) => {
+    const userId = req.body.untrustedData?.fid || 'unknown';
+    const submittedLink = req.body.untrustedData?.inputText || 'https://default-mint-url.com';
+    userLinks[userId] = submittedLink;
 
-  res.set('Content-Type', 'text/html');
-  res.send(renderFrame([
-    `<meta property="fc:frame" content="vNext" />`,
-    `<meta property="fc:frame:image" content="https://i.imgur.com/Hdhh6Qu.png" />`,
-    `<meta property="fc:frame:button:1" content="Cast Frame" />`,
-    `<meta property="fc:frame:button:1:action" content="post" />`,
-    `<meta property="fc:frame:button:1:target" content="${BASE_URL}/cast" />`,
-    `<meta property="fc:frame:button:2" content="Tweet Link" />`,
-    `<meta property="fc:frame:button:2:action" content="link" />`,
-    `<meta property="fc:frame:button:2:target" content="https://x.com/intent/tweet?text=Check%20out%20my%20NFT!%20${encodeURIComponent(submittedLink)}" />`
-  ]));
+    const frame = {
+        "fc:frame": "vNext",
+        "fc:frame:image": "https://i.imgur.com/Hdhh6Qu.png",
+        "fc:frame:button:1": "Cast Frame",
+        "fc:frame:button:1:action": "post",
+        "fc:frame:button:1:target": `${BASE_URL}/cast`,
+        "fc:frame:button:2": "Tweet Link",
+        "fc:frame:button:2:action": "link",
+        "fc:frame:button:2:target": `https://x.com/intent/tweet?text=Check%20out%20my%20NFT!%20${encodeURIComponent(submittedLink)}`,
+    };
+    res.json(frame);
 });
 
-// POST /cast
-app.post('/cast', (req, res) => {
-  res.set('Content-Type', 'text/html');
-  res.send(renderFrame([
-    `<meta property="fc:frame" content="vNext" />`,
-    `<meta property="fc:frame:image" content="https://i.imgur.com/FOtVnSJ.png" />`,
-    `<meta property="fc:frame:button:1" content="Back to Start" />`,
-    `<meta property="fc:frame:button:1:action" content="post" />`,
-    `<meta property="fc:frame:button:1:target" content="${BASE_URL}/frame" />`
-  ]));
+app.post('/cast', async (req, res) => {
+    const frame = {
+        "fc:frame": "vNext",
+        "fc:frame:image": "https://i.imgur.com/FOtVnSJ.png",
+        "fc:frame:button:1": "Back to Start",
+        "fc:frame:button:1:action": "post",
+        "fc:frame:button:1:target": `${BASE_URL}/frame`,
+    };
+    res.json(frame);
 });
 
 app.listen(port, () => {
-  console.log(`✅ Server running on port ${port}`);
+    console.log(`Server running on port ${port}`);
 });
